@@ -1,7 +1,54 @@
 import test from 'tape'
 import { is, fromJS, List } from 'immutable'
 
-// A calendar is an list of rowGroups, which each have full width and left of 0
+const event = (start, end, width, left) => { return { start, end, width, left } }
+
+const rowGroupOverlaps = (rowGroups, event)/* boolean */ => rowGroups.find(rowGroup => {
+  if (is(rowGroup, fromJS([[]]))) return
+  console.log('rowGroup', rowGroup)
+  const flattenedRow = rowGroup.flatten()
+  const rowEarliestStart = flattenedRow.minBy(({start, ...others}) => start)
+  const rowLatestEnd = flattenedRow.maxBy(({end, ...others}) => end)
+  return rangeCovers(rowEarliestStart, rowLatestEnd, event.start)
+})
+
+test('rowGroupOverlaps', (t) => {
+  const testCases = [
+    // No overlap, there are no rowGroups
+    [[fromJS([[[]]]), event(0, 60)], false],
+  ]
+
+  t.plan(testCases.length)
+
+  testCases.forEach(([rowGroups, event], expected) => {
+    // const description = `LAID OUT: ${JSON.stringify(layOutEventTree(fromJS(eventTree)))}
+    //                      EXPECTED: ${JSON.stringify(expected)}`
+    t.equal(rowGroupOverlaps(rowGroups, event), expected)//, description)
+  })
+})
+
+const columnGroupThatDoesntOverlap = (columnGroups, event) => {
+
+}
+
+const addNewRowGroup = (rowGroups, event) => rowGroups.push(fromJS([[event]]))
+const addIntoRowGroup = (rowGroup, event) => rowGroup.push(fromJS([event])) // actually, no - needs to check inside columnGroups.
+const addIntoColumnGroup = (columnGroup, event) => columnGroup.push(event)
+
+const findOrElse = (/*
+  iterable: List<T>,
+  predicate: (iterable, value) => bool,
+  ifFound: (matchingElement, value) => iterable, // not sure about this one... how should it get saved back into iterable?
+  ifNotFound: (iterable, value) => iterable */
+)/* iterable<T> */ => {}
+
+export const layOutDay = (events) => {
+  fromJS(events).reduce((eventTree, event) => {
+    return findOrElse(eventTree, event, addIntoRowGroup, addNewRowGroup)
+  }, fromJS([[[]]]))
+}
+
+// An eventTree is an list of rowGroups, which each have full width and left of 0
 const layOutEventTree = (eventTree, width = 120) => {
   return eventTree.flatMap(rowGroup => layOutRowGroup(rowGroup, width, 0))
 }
@@ -20,11 +67,12 @@ const layOutColumnGroup = (columnGroup, width, left) => {
 
 
 test('layOutEventTree', (t) => {
-  const event = (start, end, width, left) => { return { start, end, width, left } }
-
   const testCases = [
+    // Two non-overlapping events
     [[[[event(0, 60)]], [[event(90, 120)]]], [event(0, 60, 120, 0), event(90, 120, 120, 0)]],
+    // An event 0..60 that overlaps with two non-overlapping events 0..30 and 30..60
     [[[[event(0, 60)], [event(0, 30), event(30, 60)]]], [event(0, 60, 60, 0), event(0, 30, 60, 60), event(30, 60, 60, 60)]],
+    // Three overlapping events
     [[[[event(0, 45)], [event(15, 60)], [event(30, 75)]]], [event(0, 45, 40, 0), event(15, 60, 40, 40), event(30, 75, 40, 80)]],
   ]
 
